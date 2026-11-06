@@ -66,6 +66,28 @@
     });
   }
 
+  async function renderFileAccess() {
+    var state = document.getElementById('fileAccessState');
+    var hint = document.getElementById('fileAccessHint');
+    if (!api.extension || !api.extension.isAllowedFileSchemeAccess) {
+      state.textContent = '不适用';
+      hint.textContent = '这个浏览器没有提供文件访问开关。';
+      return;
+    }
+    var allowed = false;
+    try {
+      allowed = await api.extension.isAllowedFileSchemeAccess();
+    } catch (e) {
+      allowed = false;
+    }
+    state.textContent = allowed ? '已授权' : '未授权';
+    state.className = 'badge ' + (allowed ? 'badge-on' : 'badge-off');
+    hint.textContent = allowed
+      ? 'file:// 下的纯文本可以渲染成表格（前提是 Firefox 愿意内联显示它，见 README）。'
+      : '未授权时扩展在 file:// 页面上完全不运行。在 about:addons → Textable → 权限和数据 里打开「访问文件 URL」。';
+  }
+
+  renderFileAccess();
   renderMimes();
   bind();
   load();

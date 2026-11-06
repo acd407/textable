@@ -167,3 +167,24 @@ button:hover {
   color: var(--muted);
   font-size: 12.5px;
 }
+
+.badge {
+  flex: 0 0 auto;
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-size: 12px;
+  border: 1px solid var(--line);
+  color: var(--muted);
+}
+
+.badge-on {
+  color: #1a7f4b;
+  border-color: #1a7f4b66;
+  background: #1a7f4b14;
+}
+
+.badge-off {
+  color: #b35900;
+  border-color: #b3590066;
+  background: #b3590014;
+}

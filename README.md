@@ -112,6 +112,35 @@ people.csv  3 行 × 4 列 · 逗号 ,（自动）      分隔符 [自动▾]  �
                                              viewer.js（虚拟滚动表格）
 ```
 
+## 本地文件（`file://`）
+
+本地文件和 HTTP 是两条不同的判定路径，结论也不一样。以下是 Firefox 159 / Linux 上的实测结果：
+
+1. **默认还是下载**。`file:///….csv`、`file:///….tsv` 和 http 一样进下载列表，页面上没有文档。
+2. **改 `~/.mime.types` 只能救 `.tsv`，救不了 `.csv`**：
+   - `helpers.private_mime_types_file` 指向一份 `type=text/plain exts=csv,tsv,tab` →
+     `.tsv` 变成 `text/plain` 并内联显示 ✓；`.tab`、`.csvx` 这类系统没登记的扩展名同样生效 ✓
+   - 同一份文件里的 `csv` 那一项**无效**，`.csv` 照旧下载；改成 `text/x-csv-custom` 也照旧下载 ✗
+   - 原因在 Firefox 的"扩展名 → MIME"顺序（`uriloader/exthandler/nsExternalHelperAppService.cpp`）：
+     `defaultMimeEntries` → OS（mime.types）→ **`extraMimeEntries`（`{"text/csv","csv"}` 就在这张表里）**
+     → 插件 → `ext-to-type-mapping`。而 `text/csv` 又不在"可以在浏览器内查看"的类型里。
+3. **强行设成"在 Firefox 中打开"也不行**：`handlers.json` 里给 `text/csv` 写 `"action": 3`
+   （等价于 about:preferences → 应用程序里选"在 Firefox 中预览"）后打开本地 CSV，页面直接报
+   `could not be opened, because an unknown error occurred. Try saving to disk first and then opening the file.`
+4. **响应头改写这条路对 `file://` 根本不适用**：`webRequest.onHeadersReceived` 是靠
+   `http-on-examine-response` 观察者驱动的，`file://` 不走 HTTP，没有响应头可改。
+5. 还有一层容易漏：内容脚本在 `file://` 上默认没有权限。即使 manifest 里声明了 `file:///*`，
+   `browser.extension.isAllowedFileSchemeAccess()` 依然是 `false`，要在
+   about:addons → 权限和数据 → 打开「访问文件 URL」。本扩展的设置页会显示当前状态。
+
+所以本地文件有两条实用路线：
+
+| 想干的事 | 怎么做 |
+| --- | --- |
+| 看本地 `.csv`（最常见） | 工具栏图标打开查看页，拖进去 / 选择文件 / `Ctrl+V`；编码可选 GBK |
+| 让 `file://` 的 `.tsv` 直接变成表格 | `~/.mime.types` 加 `type=text/plain exts=tsv,tab`（snap / flatpak 用 `helpers.private_mime_types_file` 指到沙箱内路径），再打开「访问文件 URL」 |
+| 想在 `file://` 里也看 `.csv` | 起个静态服务器绕过去：`python3 -m http.server 8000`，然后开 `http://localhost:8000/x.csv`（http 上响应头改写照常生效） |
+
 ## 和 markdown-viewer 的差别
 
 两者面对的是同一个 Firefox 行为（表格 / markdown 默认下载），但解法不同：
@@ -129,9 +158,8 @@ people.csv  3 行 × 4 列 · 逗号 ,（自动）      分隔符 [自动▾]  �
 - **`application/octet-stream` / `application/vnd.ms-excel` 不接管**。很多对象存储（S3、
   各种 CDN）给所有文件都回 `octet-stream`，`vnd.ms-excel` 又可能真的是二进制 xls；按 MIME
   无法区分，就宁可不碰。这类文件仍然会下载 —— 下载后拖进查看页即可（工具栏图标）。
-- **`file://` 打开 `.csv`** 取决于系统的 MIME 映射，多半仍然是下载；同样用查看页看。
-  若想让 `file://` 也被接管，需要在 `about:addons` 里给扩展打开「访问文件 URL」，但
-  `webRequest` 并不拦截 `file://` 导航，所以仍然以查看页为准。
+- **`file://` 下的 `.csv`** 没法靠 MIME 列表解决（Firefox 把它钉死在 `text/csv` 且不可内联查看），
+  详见上面「本地文件」一节；用查看页或本地 HTTP 服务器。
 - **超长文件**：默认最多渲染 50 万行。虚拟滚动的总高度靠元素高度撑出来，Firefox 的单个元素
   高度上限约 1789 万 px，28px 行高换算下来最多约 63 万行，所以设置页把上限卡在 60 万。
 - **单元格不换行**：字段里的换行在单元格里显示成空格（`title` 里有完整值，双击可复制）。
