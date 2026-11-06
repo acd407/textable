@@ -129,9 +129,11 @@ people.csv  3 行 × 4 列 · 逗号 ,（自动）      分隔符 [自动▾]  �
 - **与内容无关**：把散文（不含表格结构）存成 `prose.csv` 一样下载；同样的内容存成 `.weird` 就内联。
 - **与目标类型无关**：`csv` 映射成 `text/plain`、`text/x-csv-custom`、甚至 `image/png`、`application/x-foo`，
   `.csv` 全都下载 —— 说明它根本没走 mime.types 那一层，而不是"映射成了不可查看的类型被拒"。
-- **和 `.txt` 表现完全一致**：把 `txt` 也映射成 `image/png`，`.txt` 依然是 `text/plain`。
-  `.txt` 在 Firefox 的 `defaultMimeEntries` 里，源码注释写的是 *"These are not overridable"*。
-  也就是说，这个构建里 `.csv` 的可覆盖性和 `.txt` 一样 —— 属于不可覆盖的内置映射。
+- **可覆盖性对照**：把 `ics` / `vcf` / `qif`（这三个在 `extraMimeEntries` 里）映射成 `text/plain`，
+  它们都乖乖变成 `text/plain` 并内联；把 `txt` 映射成 `image/png`，`.txt` 依然是 `text/plain`
+  —— `.txt` 在 `defaultMimeEntries` 里，源码注释是 *"These are not overridable"*。
+  `.csv` 的表现和 `.txt` 一致、和 `ics`/`vcf` 相反 → 在这个构建里它属于**不可覆盖**的那张表
+  （master 源码里 `{"text/csv","csv"}` 还挂在 `extraMimeEntries`，说明这是版本差异）。
 - **能不能内联是硬编码的**：`dom/base/nsContentUtils.cpp` 的 `nsContentUtils::IsPlainTextType()`
   规定「`text/*` 且不在 `kNonPlainTextTypes` 黑名单里」才用纯文本查看器打开。黑名单里明确写着
   `csv`、`x-csv`、`comma-separated-values`、`tab-separated-values`、`tsv`（还有 html / xml / rtf / vcard / qif…）。
