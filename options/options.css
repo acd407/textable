@@ -127,6 +127,48 @@ section {
   color: var(--muted);
 }
 
+.note-sub {
+  margin-top: 22px;
+  text-transform: none;
+  font-size: 14px;
+  letter-spacing: 0;
+  color: var(--fg);
+}
+
+.note-sub code {
+  font-size: 12.5px;
+}
+
+.facts {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0 0 12px;
+  font-size: 12.5px;
+}
+
+.facts th,
+.facts td {
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  vertical-align: top;
+}
+
+.facts th {
+  color: var(--muted);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.facts strong {
+  color: #b35900;
+}
+
+.note .muted {
+  color: var(--muted);
+  font-size: 12.5px;
+}
+
 .note ul {
   margin: 0 0 12px;
   padding-left: 18px;

@@ -83,7 +83,7 @@
     state.textContent = allowed ? '已授权' : '未授权';
     state.className = 'badge ' + (allowed ? 'badge-on' : 'badge-off');
     hint.textContent = allowed
-      ? 'file:// 下的纯文本可以渲染成表格（前提是 Firefox 愿意内联显示它，见 README）。'
+      ? '已授权：file:// 下被 Firefox 内联显示的纯文本可以渲染成表格（.tsv 可以，.csv 不行，见下表）。'
       : '未授权时扩展在 file:// 页面上完全不运行。在 about:addons → Textable → 权限和数据 里打开「访问文件 URL」。';
   }
 

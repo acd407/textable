@@ -73,9 +73,30 @@
 
     <section class="note">
       <h2>接管范围</h2>
-      <p>只有这些 MIME 会被从"下载"改成内联渲染：</p>
+      <p>网址是 <code>http://</code> / <code>https://</code> 时，只有这些 MIME 会被从“下载”改成内联渲染：</p>
       <ul id="mimes"></ul>
       <p>其它类型一律不碰，包括 <code>application/octet-stream</code>（很多对象存储给所有文件都用它）和 <code>application/vnd.ms-excel</code>（可能是真正的 xls 二进制）。这些文件仍然会被下载，下载后可以从工具栏图标打开本地查看页查看。</p>
+
+      <h2 class="note-sub">本地文件（<code>file://</code>）管不了 <code>.csv</code></h2>
+      <p>
+        本地文件不经过 HTTP，扩展没有响应头可改，类型完全由 Firefox 自己决定。实测（Firefox 159）：
+      </p>
+      <table class="facts">
+        <tr><th>文件</th><th>默认</th><th>改 <code>~/.mime.types</code> 后</th></tr>
+        <tr><td><code>.csv</code></td><td>下载</td><td><strong>还是下载</strong>（映射成 <code>text/plain</code> 甚至 <code>image/png</code> 都没用，与内容无关）</td></tr>
+        <tr><td><code>.tsv</code></td><td>下载</td><td>内联显示，能渲染成表格</td></tr>
+        <tr><td><code>.tab</code>、未登记扩展名</td><td>内联</td><td>内联</td></tr>
+      </table>
+      <p>
+        <code>.csv</code> 的扩展名映射写死在 Firefox 不可覆盖的内置表里（和 <code>.txt</code> 一样，
+        <code>~/.mime.types</code> 动不了），而 <code>text/csv</code> 又不在“可以在浏览器内查看”的类型里。
+        所以本地 <code>.csv</code> 请用工具栏图标打开查看页（拖拽 / 选择 / <code>Ctrl+V</code>），
+        或者把目录用 <code>python3 -m http.server 8000</code> 起成 http 再访问 —— http 上的响应头改写照常生效。
+      </p>
+      <p class="muted">
+        本地 <code>.tsv</code> 想要直接变表格：<code>~/.mime.types</code> 加 <code>type=text/plain exts=tsv,tab</code>，
+        再打开上面的「访问文件 URL」开关。
+      </p>
     </section>
 
     <section>
