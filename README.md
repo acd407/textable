@@ -114,30 +114,38 @@ people.csv  3 行 × 4 列 · 逗号 ,（自动）      分隔符 [自动▾]  �
 
 ## 本地文件（`file://`）
 
-本地文件和 HTTP 是两条不同的判定路径，结论也不一样。以下是 Firefox 159 / Linux 上的实测结果：
+本地文件和 HTTP 是两条判定路径。以下是 Firefox 159 / Linux 上的实测结果（每一项都单独跑过一轮，
+判据是"文件是否被内联显示"以及 `document.contentType`）：
 
-1. **默认还是下载**。`file:///….csv`、`file:///….tsv` 和 http 一样进下载列表，页面上没有文档。
-2. **改 `~/.mime.types` 只能救 `.tsv`，救不了 `.csv`**：
-   - `helpers.private_mime_types_file` 指向一份 `type=text/plain exts=csv,tsv,tab` →
-     `.tsv` 变成 `text/plain` 并内联显示 ✓；`.tab`、`.csvx` 这类系统没登记的扩展名同样生效 ✓
-   - 同一份文件里的 `csv` 那一项**无效**，`.csv` 照旧下载；改成 `text/x-csv-custom` 也照旧下载 ✗
-   - 更直接的反证：把 `csv` 映射成 `image/png`、`application/x-foo` 也一样是下载 → **`.csv` 在这台机器上
-     根本不走 mime.types 这一层**，不是"映射成了别的类型被拒"。
-   - 系统栈也不作数：`xdg-mime query filetype x.csv` 报 `text/plain`（`x.tsv` 同样），Firefox 照样下载。
-     Firefox 只用自己那套（`uriloader/exthandler/nsExternalHelperAppService.cpp`）：
-     `defaultMimeEntries`（硬编码、不可覆盖）→ OS 层（私有 mime.types → GIO → 全局 mime.types）→
-     `extraMimeEntries`（`{"text/csv","csv"}` 在这张表里）→ 插件 → `ext-to-type-mapping`。
-     至于 `.csv` 为什么连 OS 层都被跳过，我没有定论 —— 记在这里当待查项。
-3. **强行设成"在 Firefox 中打开"也不行**：`handlers.json` 里给 `text/csv` 写 `"action": 3`
-   （等价于 about:preferences → 应用程序里选"在 Firefox 中预览"）后打开本地 CSV，页面直接报
-   `could not be opened, because an unknown error occurred. Try saving to disk first and then opening the file.`
-4. **响应头改写这条路对 `file://` 根本不适用**：`webRequest.onHeadersReceived` 是靠
-   `http-on-examine-response` 观察者驱动的，`file://` 不走 HTTP，没有响应头可改。
-5. 还有一层容易漏：内容脚本在 `file://` 上默认没有权限。即使 manifest 里声明了 `file:///*`，
-   `browser.extension.isAllowedFileSchemeAccess()` 依然是 `false`，要在
-   about:addons → 权限和数据 → 打开「访问文件 URL」。本扩展的设置页会显示当前状态。
+| 扩展名 | 默认行为 | `~/.mime.types` 里映射成 `text/plain` |
+| --- | --- | --- |
+| `.csv` | 下载 | **仍然下载** |
+| `.tsv` | 下载 | 内联显示 ✅ |
+| `.tab`、未登记的扩展名 | 内联（未知类型按文本嗅探） | 内联 |
+| `.txt` | 内联 | 内联（映射被忽略） |
 
-所以本地文件有两条实用路线：
+关于 `.csv` 那几行，几个反证试验：
+
+- **与内容无关**：把散文（不含表格结构）存成 `prose.csv` 一样下载；同样的内容存成 `.weird` 就内联。
+- **与目标类型无关**：`csv` 映射成 `text/plain`、`text/x-csv-custom`、甚至 `image/png`、`application/x-foo`，
+  `.csv` 全都下载 —— 说明它根本没走 mime.types 那一层，而不是"映射成了不可查看的类型被拒"。
+- **和 `.txt` 表现完全一致**：把 `txt` 也映射成 `image/png`，`.txt` 依然是 `text/plain`。
+  `.txt` 在 Firefox 的 `defaultMimeEntries` 里，源码注释写的是 *"These are not overridable"*。
+  也就是说，这个构建里 `.csv` 的可覆盖性和 `.txt` 一样 —— 属于不可覆盖的内置映射。
+- 系统栈也不作数：`xdg-mime query filetype x.csv` 报 `text/plain`（`x.tsv` 同样），Firefox 照样下载；
+  Firefox 自己的顺序是 `defaultMimeEntries` → OS 层（私有 mime.types → GIO → 全局 mime.types）→
+  `extraMimeEntries` → 插件 → `ext-to-type-mapping`，GIO/XDG 只在前面的查表都落空时才被问到。
+- 强行设成"在 Firefox 中打开"也不行：`handlers.json` 里给 `text/csv` 写 `"action": 3`
+  （等价于 about:preferences → 应用程序里选"在 Firefox 中预览"）后打开本地 CSV，页面报
+  `could not be opened, because an unknown error occurred. Try saving to disk first and then opening the file.`
+  —— `text/csv` 不在"可在浏览器内查看"的类型里。
+- 响应头改写这条路对 `file://` 也不适用：`webRequest.onHeadersReceived` 由 `http-on-examine-response`
+  观察者驱动，`file://` 不走 HTTP，没有响应头可改。
+- 还有一层容易漏：内容脚本在 `file://` 上默认没有权限。即使 manifest 里声明了 `file:///*`，
+  `browser.extension.isAllowedFileSchemeAccess()` 依然是 `false`，要在
+  about:addons → 权限和数据 → 打开「访问文件 URL」。本扩展的设置页会显示当前状态。
+
+所以本地文件有这几条实用路线：
 
 | 想干的事 | 怎么做 |
 | --- | --- |
