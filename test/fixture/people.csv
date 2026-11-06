@@ -1,0 +1,4 @@
+name,age,city,note
+"Smith, John",42,New York,"likes ""quotes"""
+Jane Doe,31,Berlin,plain
+李四,28,上海,"多字节, 中文"

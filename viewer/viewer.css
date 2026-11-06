@@ -1,0 +1,109 @@
+/* viewer 页面自己的样式（表格样式在 ../viewer.css 里） */
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  min-height: 100%;
+  background: var(--tt-bg);
+  color: var(--tt-fg);
+  font: 14px/1.6 var(--tt-ui);
+}
+
+.tv-main {
+  display: flex;
+  min-height: 100vh;
+}
+
+.tv-drop {
+  margin: auto;
+  padding: 40px 24px;
+  max-width: 640px;
+  text-align: center;
+  border-radius: 16px;
+  cursor: pointer;
+}
+
+.tv-drop h1 {
+  margin: 18px 0 8px;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.tv-sub {
+  margin: 0 0 22px;
+  color: var(--tt-muted);
+}
+
+.tv-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--tt-muted);
+  font-size: 13px;
+}
+
+.tv-field select {
+  font: inherit;
+  font-size: 13px;
+  padding: 4px 8px;
+  color: var(--tt-fg);
+  background: var(--tt-btn-bg);
+  border: 1px solid var(--tt-line);
+  border-radius: 6px;
+}
+
+.tv-hint {
+  margin: 26px 0 0;
+  color: var(--tt-muted);
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+.tv-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--tt-accent);
+  font: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+kbd {
+  padding: 1px 5px;
+  border: 1px solid var(--tt-line);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  font: 12px var(--tt-mono);
+  color: var(--tt-fg);
+}
+
+/* 九宫格小图标 */
+.tv-mark {
+  display: grid;
+  grid-template-columns: repeat(3, 18px);
+  gap: 4px;
+  justify-content: center;
+}
+
+.tv-mark span {
+  width: 18px;
+  height: 14px;
+  border-radius: 3px;
+  background: var(--tt-line);
+}
+
+.tv-mark span:nth-child(-n + 3) {
+  background: var(--tt-accent);
+  opacity: 0.85;
+}
+
+body.tv-dragging .tv-drop {
+  outline: 2px dashed var(--tt-accent);
+  outline-offset: 6px;
+}
+
+[hidden] {
+  display: none !important;
+}

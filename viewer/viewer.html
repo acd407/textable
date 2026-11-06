@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Textable</title>
+  <link rel="stylesheet" href="../viewer.css">
+  <link rel="stylesheet" href="viewer.css">
+</head>
+<body>
+  <main class="tv-main" id="main">
+    <section class="tv-drop" id="drop">
+      <div class="tv-mark" aria-hidden="true">
+        <span></span><span></span><span></span>
+        <span></span><span></span><span></span>
+        <span></span><span></span><span></span>
+      </div>
+      <h1>把 CSV / TSV 文件拖进来</h1>
+      <p class="tv-sub">
+        或者 <button type="button" class="tv-link" id="pick">选择文件</button>，
+        也可以直接 <kbd>Ctrl</kbd> + <kbd>V</kbd> 粘贴表格文本。
+      </p>
+
+      <div class="tv-row">
+        <label class="tv-field">
+          编码
+          <select id="encoding">
+            <option value="auto">自动（先试 UTF-8，失败退回 GBK）</option>
+            <option value="utf-8">UTF-8</option>
+            <option value="gbk">GBK / GB18030</option>
+            <option value="big5">Big5</option>
+            <option value="utf-16le">UTF-16 LE</option>
+          </select>
+        </label>
+      </div>
+
+      <p class="tv-hint">
+        浏览器里直接打开的 CSV / TSV 会被自动渲染，不需要经过这个页面；
+        这个页面用来查看已经下载到本地、或者浏览器坚持要下载的文件。
+      </p>
+
+      <input type="file" id="file" accept=".csv,.tsv,.tab,.txt,text/*" hidden>
+    </section>
+  </main>
+
+  <div id="mount" hidden></div>
+
+  <script src="../common.js"></script>
+  <script src="../parse.js"></script>
+  <script src="../viewer.js"></script>
+  <script src="viewer.js"></script>
+</body>
+</html>

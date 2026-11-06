@@ -1,0 +1,347 @@
+/*
+ * 渲染器样式。作为内容脚本的 CSS 注入到所有页面（所以选择器全部带 tt- 前缀），
+ * viewer 页面也直接引这一份。
+ *
+ * 主题：默认跟随系统，.tt-root[data-tt-theme="light"|"dark"] 可以覆盖。
+ */
+
+:root {
+  --tt-bg: #ffffff;
+  --tt-fg: #1f2328;
+  --tt-muted: #656d76;
+  --tt-line: #e2e5e9;
+  --tt-head-bg: #f6f8fa;
+  --tt-head-fg: #3d444d;
+  --tt-zebra: #fafbfc;
+  --tt-accent: #2e7cd6;
+  --tt-btn-bg: #ffffff;
+  --tt-shadow: 0 8px 24px rgba(20, 25, 33, 0.14);
+  --tt-mono: ui-monospace, SFMono-Regular, "Cascadia Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  --tt-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans CJK SC", "PingFang SC",
+    "Microsoft YaHei", system-ui, sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --tt-bg: #16181d;
+    --tt-fg: #e6edf3;
+    --tt-muted: #9198a1;
+    --tt-line: #2b3038;
+    --tt-head-bg: #1d2127;
+    --tt-head-fg: #c9d1d9;
+    --tt-zebra: #191c21;
+    --tt-accent: #5aa9ff;
+    --tt-btn-bg: #21262d;
+    --tt-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  }
+}
+
+.tt-root[data-tt-theme='light'] {
+  --tt-bg: #ffffff;
+  --tt-fg: #1f2328;
+  --tt-muted: #656d76;
+  --tt-line: #e2e5e9;
+  --tt-head-bg: #f6f8fa;
+  --tt-head-fg: #3d444d;
+  --tt-zebra: #fafbfc;
+  --tt-accent: #2e7cd6;
+  --tt-btn-bg: #ffffff;
+}
+
+.tt-root[data-tt-theme='dark'] {
+  --tt-bg: #16181d;
+  --tt-fg: #e6edf3;
+  --tt-muted: #9198a1;
+  --tt-line: #2b3038;
+  --tt-head-bg: #1d2127;
+  --tt-head-fg: #c9d1d9;
+  --tt-zebra: #191c21;
+  --tt-accent: #5aa9ff;
+  --tt-btn-bg: #21262d;
+}
+
+/* 拿到文本之前先把 <pre> 藏掉，避免原文闪一下；底色跟着主题走，别白屏 */
+html.tt-loading {
+  background: var(--tt-bg);
+}
+html.tt-loading body > pre {
+  visibility: hidden;
+}
+
+html.tt-page,
+html.tt-page body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  overflow: hidden;
+  background: var(--tt-bg);
+  color: var(--tt-fg);
+}
+
+/* ---------------------------------------------------------------- 骨架 */
+
+.tt-root {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--tt-bg);
+  color: var(--tt-fg);
+  font: 13px/1.4 var(--tt-ui);
+  -webkit-font-smoothing: antialiased;
+  z-index: 2147483000;
+}
+
+.tt-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--tt-line);
+  background: var(--tt-head-bg);
+  flex: 0 0 auto;
+}
+
+.tt-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  min-width: 0;
+}
+
+.tt-name {
+  font-weight: 600;
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 40vw;
+}
+
+.tt-meta {
+  color: var(--tt-muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.tt-tools {
+  margin-left: auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.tt-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--tt-muted);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.tt-field input[type='checkbox'] {
+  margin: 0;
+  accent-color: var(--tt-accent);
+}
+
+.tt-select {
+  font: inherit;
+  font-size: 12px;
+  padding: 2px 6px;
+  color: var(--tt-fg);
+  background: var(--tt-btn-bg);
+  border: 1px solid var(--tt-line);
+  border-radius: 5px;
+}
+
+.tt-search input {
+  font: inherit;
+  font-size: 12px;
+  width: 170px;
+  padding: 3px 8px;
+  color: var(--tt-fg);
+  background: var(--tt-btn-bg);
+  border: 1px solid var(--tt-line);
+  border-radius: 5px;
+}
+
+.tt-search input:focus,
+.tt-select:focus {
+  outline: 2px solid var(--tt-accent);
+  outline-offset: -1px;
+}
+
+.tt-btn {
+  font: inherit;
+  font-size: 12px;
+  padding: 3px 10px;
+  color: var(--tt-fg);
+  background: var(--tt-btn-bg);
+  border: 1px solid var(--tt-line);
+  border-radius: 5px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.tt-btn:hover {
+  border-color: var(--tt-accent);
+  color: var(--tt-accent);
+}
+
+.tt-btn-ghost {
+  background: transparent;
+}
+
+.tt-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  position: relative;
+  display: flex;
+}
+
+/* ---------------------------------------------------------------- 表格 */
+
+.tt-scroll {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+.tt-table {
+  border-collapse: separate;
+  border-spacing: 0;
+  table-layout: fixed;
+  width: 100%;
+}
+
+.tt-table th,
+.tt-table td {
+  box-sizing: border-box;
+  height: var(--tt-row-h, 28px);
+  padding: 0 10px;
+  text-align: left;
+  vertical-align: middle;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 13px;
+  border-right: 1px solid var(--tt-line);
+  border-bottom: 1px solid var(--tt-line);
+}
+
+.tt-table th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--tt-head-bg);
+  color: var(--tt-head-fg);
+  font-weight: 600;
+}
+
+.tt-table th.tt-colnum {
+  color: var(--tt-muted);
+  font-weight: 400;
+}
+
+.tt-table td.tt-num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.tt-table tbody tr.tt-odd td {
+  background: var(--tt-zebra);
+}
+
+.tt-gutter {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  text-align: right;
+  color: var(--tt-muted);
+  font-variant-numeric: tabular-nums;
+  font-size: 12px !important;
+  padding-right: 8px !important;
+  background: var(--tt-bg);
+}
+
+.tt-table th.tt-gutter {
+  z-index: 3;
+  background: var(--tt-head-bg);
+  font-weight: 400;
+}
+
+.tt-table tbody tr.tt-odd td.tt-gutter {
+  background: var(--tt-bg);
+}
+
+.tt-table tr.tt-spacer td {
+  height: auto;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.tt-table tbody tr:hover td {
+  background: color-mix(in srgb, var(--tt-accent) 8%, var(--tt-bg));
+}
+
+/* ---------------------------------------------------------------- 原文 */
+
+.tt-raw {
+  flex: 1 1 auto;
+  margin: 0;
+  padding: 14px 18px;
+  overflow: auto;
+  white-space: pre;
+  font: 13px/1.55 var(--tt-mono);
+  color: var(--tt-fg);
+  background: var(--tt-bg);
+  tab-size: 8;
+}
+
+/* ---------------------------------------------------------------- 提示 */
+
+.tt-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 28px;
+  transform: translate(-50%, 8px);
+  padding: 7px 14px;
+  border-radius: 999px;
+  background: rgba(28, 32, 38, 0.92);
+  color: #fff;
+  font-size: 12px;
+  box-shadow: var(--tt-shadow);
+  opacity: 0;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+  pointer-events: none;
+  z-index: 2147483001;
+}
+
+.tt-toast.tt-toast-in {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+.tt-copy-sink {
+  position: fixed;
+  left: -9999px;
+  top: 0;
+  opacity: 0;
+}
+
+/* ------------------------------------------------------------ 空状态 */
+
+.tt-empty {
+  margin: auto;
+  padding: 40px;
+  color: var(--tt-muted);
+  font: 13px/1.6 var(--tt-ui);
+  text-align: center;
+}

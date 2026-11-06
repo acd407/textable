@@ -1,0 +1,21 @@
+# 打包产物
+dist/
+*.zip
+*.xpi
+
+# 依赖与缓存
+node_modules/
+__pycache__/
+*.py[cod]
+.cache/
+
+# 工具/运行时
+.pi/
+
+# 编辑器与系统
+.vscode/
+.idea/
+*.swp
+*~
+.DS_Store
+Thumbs.db

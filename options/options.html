@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Textable 设置</title>
+  <link rel="stylesheet" href="options.css">
+</head>
+<body>
+  <main>
+    <header>
+      <h1>Textable</h1>
+      <p class="lead">把 CSV / TSV / 制表符纯文本渲染成表格。判断依据只有响应的 MIME 和内容形状，没有站点列表。</p>
+    </header>
+
+    <section>
+      <label class="row">
+        <span class="row-text">
+          <strong>启用</strong>
+          <em>关掉后不再接管任何响应，CSV 恢复成"浏览器直接下载"。</em>
+        </span>
+        <input type="checkbox" id="enabled">
+      </label>
+
+      <label class="row">
+        <span class="row-text">
+          <strong>纯文本也按内容嗅探</strong>
+          <em>服务器用 <code>text/plain</code> 返回的 .tsv / .csv 也能渲染。散文、日志这类内容不会被误判。</em>
+        </span>
+        <input type="checkbox" id="renderPlain">
+      </label>
+
+      <label class="row">
+        <span class="row-text">
+          <strong>首行表头</strong>
+          <em>自动 = 首行没有数字、下一行有数字（或首行无空格子）时当成表头。表格里随时可以改。</em>
+        </span>
+        <select id="headerMode">
+          <option value="auto">自动</option>
+          <option value="on">总是</option>
+          <option value="off">从不</option>
+        </select>
+      </label>
+
+      <label class="row">
+        <span class="row-text">
+          <strong>主题</strong>
+          <em>跟随系统，或强制浅色 / 深色。</em>
+        </span>
+        <select id="theme">
+          <option value="auto">跟随系统</option>
+          <option value="light">浅色</option>
+          <option value="dark">深色</option>
+        </select>
+      </label>
+
+      <label class="row">
+        <span class="row-text">
+          <strong>最多渲染行数</strong>
+          <em>超过这个行数只解析前 N 行，避免超大文件把标签页卡住。默认 500000。</em>
+        </span>
+        <input type="number" id="maxRows" min="1000" max="600000" step="1000">
+      </label>
+    </section>
+
+    <section class="note">
+      <h2>接管范围</h2>
+      <p>只有这些 MIME 会被从"下载"改成内联渲染：</p>
+      <ul id="mimes"></ul>
+      <p>其它类型一律不碰，包括 <code>application/octet-stream</code>（很多对象存储给所有文件都用它）和 <code>application/vnd.ms-excel</code>（可能是真正的 xls 二进制）。这些文件仍然会被下载，下载后可以从工具栏图标打开本地查看页查看。</p>
+    </section>
+
+    <section>
+      <button type="button" id="openViewer">打开本地文件查看页</button>
+      <span class="saved" id="saved" hidden>已保存</span>
+    </section>
+  </main>
+
+  <script src="../common.js"></script>
+  <script src="options.js"></script>
+</body>
+</html>
