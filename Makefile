@@ -12,6 +12,7 @@ help:
 	@echo "make test     冒烟测试（解析/嗅探/MIME，无需浏览器）"
 	@echo "make e2e      真机端到端测试（headless Firefox + 真扩展，需 Marionette）"
 	@echo "make check    语法检查 + 冒烟测试 + 打包自检"
+	@echo "make sign     提交 AMO 签名，产出 dist/textable-<version>-signed.xpi"
 	@echo "make icons    重新生成图标"
 	@echo "make clean    删除 dist/"
 
@@ -35,10 +36,13 @@ check:
 	$(NODE) test/smoke.test.mjs
 	@$(PYTHON) tools/pack.py --only zip >/dev/null && echo "打包自检通过"
 
+sign: build
+	$(PYTHON) tools/amo-sign.py
+
 icons:
 	$(PYTHON) tools/make-icons.py
 
 clean:
 	rm -rf dist
 
-.PHONY: help build xpi zip test e2e check icons clean
+.PHONY: help build xpi zip test e2e check sign icons clean
