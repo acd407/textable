@@ -132,6 +132,11 @@ people.csv  3 行 × 4 列 · 逗号 ,（自动）      分隔符 [自动▾]  �
 - **和 `.txt` 表现完全一致**：把 `txt` 也映射成 `image/png`，`.txt` 依然是 `text/plain`。
   `.txt` 在 Firefox 的 `defaultMimeEntries` 里，源码注释写的是 *"These are not overridable"*。
   也就是说，这个构建里 `.csv` 的可覆盖性和 `.txt` 一样 —— 属于不可覆盖的内置映射。
+- **能不能内联是硬编码的**：`dom/base/nsContentUtils.cpp` 的 `nsContentUtils::IsPlainTextType()`
+  规定「`text/*` 且不在 `kNonPlainTextTypes` 黑名单里」才用纯文本查看器打开。黑名单里明确写着
+  `csv`、`x-csv`、`comma-separated-values`、`tab-separated-values`、`tsv`（还有 html / xml / rtf / vcard / qif…）。
+  所以 `text/csv` 直接进下载，`text/tab-separated-values` 也一样 —— 我们救 `.tsv` 的办法其实不是"让它变可查看"，
+  而是**把类型改成 `text/plain`**。这条路径没有任何 about:config 开关。
 - 系统栈也不作数：`xdg-mime query filetype x.csv` 报 `text/plain`（`x.tsv` 同样），Firefox 照样下载；
   Firefox 自己的顺序是 `defaultMimeEntries` → OS 层（私有 mime.types → GIO → 全局 mime.types）→
   `extraMimeEntries` → 插件 → `ext-to-type-mapping`，GIO/XDG 只在前面的查表都落空时才被问到。
@@ -139,6 +144,10 @@ people.csv  3 行 × 4 列 · 逗号 ,（自动）      分隔符 [自动▾]  �
   （等价于 about:preferences → 应用程序里选"在 Firefox 中预览"）后打开本地 CSV，页面报
   `could not be opened, because an unknown error occurred. Try saving to disk first and then opening the file.`
   —— `text/csv` 不在"可在浏览器内查看"的类型里。
+- `about:config` 里那几个看着相关的项都管不到它：`helpers.global_mime_types_file` /
+  `helpers.private_mime_types_file` 只提供"扩展名 → MIME"的查表（对 `.csv` 被更前面的不可覆盖映射拦住）；
+  `network.mimesniff.*` 只管类型缺失/标错时要不要做 HTML 嗅探；
+  `security.block_*_with_wrong_mime` 只管 Worker 脚本；`widget.use-xdg-desktop-portal.mime-handler` 只管"外部程序打开"。
 - 响应头改写这条路对 `file://` 也不适用：`webRequest.onHeadersReceived` 由 `http-on-examine-response`
   观察者驱动，`file://` 不走 HTTP，没有响应头可改。
 - 还有一层容易漏：内容脚本在 `file://` 上默认没有权限。即使 manifest 里声明了 `file:///*`，

@@ -88,14 +88,22 @@
         <tr><td><code>.tab</code>、未登记扩展名</td><td>内联</td><td>内联</td></tr>
       </table>
       <p>
-        <code>.csv</code> 的扩展名映射写死在 Firefox 不可覆盖的内置表里（和 <code>.txt</code> 一样，
-        <code>~/.mime.types</code> 动不了），而 <code>text/csv</code> 又不在“可以在浏览器内查看”的类型里。
+        两头都堵：<code>.csv</code> 的扩展名映射改不动（和 <code>.txt</code> 一样属于不可覆盖的内置映射），
+        而且 <code>text/csv</code> 本身就在 Firefox“不当纯文本渲染”的硬编码黑名单里
+        （<code>nsContentUtils::IsPlainTextType</code> 的 <code>kNonPlainTextTypes</code>，含
+        <code>csv</code> / <code>x-csv</code> / <code>comma-separated-values</code> /
+        <code>tab-separated-values</code> / <code>tsv</code>）。这两处都<b>没有 about:config 开关</b>——
+        上面截图区里的 <code>helpers.*_mime_types_file</code>、<code>network.mimesniff.*</code> 都改不了它。
+      </p>
+      <p>
         所以本地 <code>.csv</code> 请用工具栏图标打开查看页（拖拽 / 选择 / <code>Ctrl+V</code>），
         或者把目录用 <code>python3 -m http.server 8000</code> 起成 http 再访问 —— http 上的响应头改写照常生效。
       </p>
       <p class="muted">
-        本地 <code>.tsv</code> 想要直接变表格：<code>~/.mime.types</code> 加 <code>type=text/plain exts=tsv,tab</code>，
-        再打开上面的「访问文件 URL」开关。
+        本地 <code>.tsv</code> 想要直接变表格：<code>~/.mime.types</code> 加 <code>type=text/plain exts=tsv,tab</code>
+        （<code>helpers.private_mime_types_file</code> 默认就指向 <code>~/.mime.types</code>），
+        再打开上面的「访问文件 URL」开关。注意这里管用的原因是把类型<b>改成了 text/plain</b>，
+        而不是留在 <code>text/tab-separated-values</code>——后者也在黑名单里。
       </p>
     </section>
 
