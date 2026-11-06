@@ -121,9 +121,13 @@ people.csv  3 行 × 4 列 · 逗号 ,（自动）      分隔符 [自动▾]  �
    - `helpers.private_mime_types_file` 指向一份 `type=text/plain exts=csv,tsv,tab` →
      `.tsv` 变成 `text/plain` 并内联显示 ✓；`.tab`、`.csvx` 这类系统没登记的扩展名同样生效 ✓
    - 同一份文件里的 `csv` 那一项**无效**，`.csv` 照旧下载；改成 `text/x-csv-custom` 也照旧下载 ✗
-   - 原因在 Firefox 的"扩展名 → MIME"顺序（`uriloader/exthandler/nsExternalHelperAppService.cpp`）：
-     `defaultMimeEntries` → OS（mime.types）→ **`extraMimeEntries`（`{"text/csv","csv"}` 就在这张表里）**
-     → 插件 → `ext-to-type-mapping`。而 `text/csv` 又不在"可以在浏览器内查看"的类型里。
+   - 更直接的反证：把 `csv` 映射成 `image/png`、`application/x-foo` 也一样是下载 → **`.csv` 在这台机器上
+     根本不走 mime.types 这一层**，不是"映射成了别的类型被拒"。
+   - 系统栈也不作数：`xdg-mime query filetype x.csv` 报 `text/plain`（`x.tsv` 同样），Firefox 照样下载。
+     Firefox 只用自己那套（`uriloader/exthandler/nsExternalHelperAppService.cpp`）：
+     `defaultMimeEntries`（硬编码、不可覆盖）→ OS 层（私有 mime.types → GIO → 全局 mime.types）→
+     `extraMimeEntries`（`{"text/csv","csv"}` 在这张表里）→ 插件 → `ext-to-type-mapping`。
+     至于 `.csv` 为什么连 OS 层都被跳过，我没有定论 —— 记在这里当待查项。
 3. **强行设成"在 Firefox 中打开"也不行**：`handlers.json` 里给 `text/csv` 写 `"action": 3`
    （等价于 about:preferences → 应用程序里选"在 Firefox 中预览"）后打开本地 CSV，页面直接报
    `could not be opened, because an unknown error occurred. Try saving to disk first and then opening the file.`
