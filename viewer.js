@@ -13,6 +13,10 @@ var TT = (globalThis.TT = globalThis.TT || {});
 (function () {
   var ROW_H = 28;
   var OVERSCAN = 12;
+  /* 行数不多时整表渲染：浏览器的查找（Ctrl+F）、全选、Ctrl+A/Ctrl+C 都得看到 DOM 才能工作。
+     超过这个量才退回虚拟滚动 —— 那时浏览器自带的查找本来就只能看到窗口内的行。 */
+  var RENDER_ALL_ROWS = 5000;
+  var RENDER_ALL_CELLS = 80000;
   var MAX_COL_W = 420;
   var MIN_COL_W = 56;
   var MEASURE_ROWS = 400;
@@ -109,7 +113,7 @@ var TT = (globalThis.TT = globalThis.TT || {});
     var searchWrap = h('label', 'tt-search');
     var searchBox = document.createElement('input');
     searchBox.type = 'search';
-    searchBox.placeholder = '过滤行…';
+    searchBox.placeholder = '过滤行…（Ctrl+F）';
     searchBox.spellcheck = false;
     searchWrap.appendChild(searchBox);
 
@@ -334,8 +338,11 @@ var TT = (globalThis.TT = globalThis.TT || {});
       var total = state.filtered ? state.filtered.length : rows.length;
       var headH = state.headerRow ? ROW_H : 0;
       var offset = Math.max(0, scrollTop - headH);
-      var start = Math.max(0, Math.floor(offset / ROW_H) - OVERSCAN);
-      var end = Math.min(total, Math.ceil((offset + viewHeight) / ROW_H) + OVERSCAN);
+
+      /* 行数够少就整表进 DOM：查找/全选/复制全表都按浏览器的直觉工作 */
+      var renderAll = total * state.fields <= RENDER_ALL_CELLS && total <= RENDER_ALL_ROWS;
+      var start = renderAll ? 0 : Math.max(0, Math.floor(offset / ROW_H) - OVERSCAN);
+      var end = renderAll ? total : Math.min(total, Math.ceil((offset + viewHeight) / ROW_H) + OVERSCAN);
 
       var fragment = document.createDocumentFragment();
       if (start > 0) fragment.appendChild(spacer(start * ROW_H));
@@ -472,6 +479,24 @@ var TT = (globalThis.TT = globalThis.TT || {});
 
     scroll.addEventListener('scroll', schedulePaint, { passive: true });
 
+    /* 虚拟滚动下行不在 DOM 里，浏览器自带的 Ctrl+F 找不到它们；把快捷键交给表格自己的过滤框。
+       preventDefault 能压掉 Firefox 的查找栏（网页里拦 Ctrl+F 是允许的）。 */
+    function focusSearch() {
+      if (state.raw) setRaw(false);
+      searchBox.focus();
+      searchBox.select();
+    }
+
+    function onKeyDown(event) {
+      if (!(event.ctrlKey || event.metaKey) || event.altKey || event.shiftKey) return;
+      if (event.key !== 'f' && event.key !== 'F' && event.key !== 'Find') return;
+      event.preventDefault();
+      event.stopPropagation();
+      focusSearch();
+    }
+
+    document.addEventListener('keydown', onKeyDown, true);
+
     var resizeObserver = null;
     if (typeof ResizeObserver === 'function') {
       resizeObserver = new ResizeObserver(function () {
@@ -505,6 +530,7 @@ var TT = (globalThis.TT = globalThis.TT || {});
         searchBox.focus();
       },
       destroy: function () {
+        document.removeEventListener('keydown', onKeyDown, true);
         if (resizeObserver) resizeObserver.disconnect();
         if (frame) cancelAnimationFrame(frame);
         clearTimeout(filterTimer);

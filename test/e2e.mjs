@@ -428,6 +428,34 @@ try {
   const lastLine = state.bodyRows[state.bodyRows.length - 1][0];
   ok('最后一行行号 = 50001', lastLine === '50001', lastLine);
 
+  /* ------------------------------------------------ 浏览器查找 / 整表渲染 */
+
+  state = await visit(client, base + '/gen?rows=3000');
+  ok('3000 行整表进 DOM（浏览器自带查找、全选能用）', state.bodyRows.length === 3000, state.bodyRows.length);
+  ok('整表渲染时不放 spacer', state.spacerRows === 0, state.spacerRows);
+
+  const find = await client.js(`
+    const ev = new KeyboardEvent('keydown', { key: 'f', ctrlKey: true, bubbles: true, cancelable: true });
+    document.body.dispatchEvent(ev);
+    const active = document.activeElement;
+    return { prevented: ev.defaultPrevented, input: active ? active.tagName + ':' + (active.className || active.type) : null };
+  `);
+  ok('Ctrl+F 被表格接管（不打开浏览器查找栏）', find.prevented === true, find);
+  ok('Ctrl+F 聚焦到表格的过滤框', String(find.input).startsWith('INPUT'), find);
+
+  await client.js(`
+    const input = document.querySelector('.tt-search input');
+    input.value = 'user 2999';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    return true;
+  `);
+  await sleep(500);
+  state = await settle(client);
+  includes('Ctrl+F 之后直接输入即可过滤', state.meta, '匹配 1 / 3,000 行');
+
+  state = await visit(client, base + '/gen?rows=50000');
+  ok('超过阈值仍然虚拟滚动', state.bodyRows.length < 200, state.bodyRows.length);
+
   /* -------------------------------------------------------------- 设置 */
 
   const optionsUrl = await findOptionsUrl(client, profile);
