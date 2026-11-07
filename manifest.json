@@ -1,10 +1,9 @@
 {
   "manifest_version": 3,
   "name": "Textable",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "把浏览器里打开的 CSV / TSV / 制表符纯文本渲染成可筛选、可虚拟滚动的表格。",
   "homepage_url": "https://github.com/acd407/textable",
-
   "icons": {
     "16": "icons/icon-16.png",
     "32": "icons/icon-32.png",
@@ -12,25 +11,39 @@
     "96": "icons/icon-96.png",
     "128": "icons/icon-128.png"
   },
-
-  "permissions": ["storage", "webRequest", "webRequestBlocking"],
-
-  "host_permissions": ["<all_urls>", "file:///*"],
-
+  "permissions": [
+    "storage",
+    "webRequest",
+    "webRequestBlocking"
+  ],
+  "host_permissions": [
+    "<all_urls>",
+    "file:///*"
+  ],
   "background": {
-    "scripts": ["common.js", "background.js"]
+    "scripts": [
+      "common.js",
+      "background.js"
+    ]
   },
-
   "content_scripts": [
     {
-      "matches": ["<all_urls>"],
-      "js": ["common.js", "parse.js", "viewer.js", "content.js"],
-      "css": ["viewer.css"],
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "common.js",
+        "parse.js",
+        "viewer.js",
+        "content.js"
+      ],
+      "css": [
+        "viewer.css"
+      ],
       "run_at": "document_start",
       "all_frames": false
     }
   ],
-
   "action": {
     "default_title": "Textable：打开本地表格文件",
     "default_icon": {
@@ -39,18 +52,18 @@
       "48": "icons/icon-48.png"
     }
   },
-
   "options_ui": {
     "page": "options/options.html",
     "open_in_tab": true
   },
-
   "browser_specific_settings": {
     "gecko": {
       "id": "textable@acd407.github.io",
       "strict_min_version": "128.0",
       "data_collection_permissions": {
-        "required": ["none"]
+        "required": [
+          "none"
+        ]
       }
     }
   }
