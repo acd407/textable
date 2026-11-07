@@ -170,6 +170,18 @@ html.tt-page body {
   border-radius: 5px;
 }
 
+.tt-count {
+  font-size: 12px;
+  color: var(--tt-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.tt-count-none {
+  color: #b35900;
+}
+
 .tt-search input:focus,
 .tt-select:focus {
   outline: 2px solid var(--tt-accent);
@@ -280,11 +292,27 @@ html.tt-page body {
   background: var(--tt-bg);
 }
 
+.tt-table td {
+  scroll-margin-top: calc(var(--tt-row-h, 28px) + 4px);
+  scroll-margin-inline: 12px;
+}
+
 .tt-table tr.tt-spacer td {
   height: auto;
   padding: 0;
   border: 0;
   background: transparent;
+}
+
+/* 查找命中：非当前条与当前条；用 !important 压过斑马纹和 hover */
+.tt-table tbody td.tt-hit {
+  background: color-mix(in srgb, var(--tt-accent) 20%, var(--tt-bg)) !important;
+  color: var(--tt-fg);
+}
+
+.tt-table tbody td.tt-hit-current {
+  background: color-mix(in srgb, var(--tt-accent) 45%, var(--tt-bg)) !important;
+  box-shadow: inset 0 0 0 2px var(--tt-accent);
 }
 
 .tt-table tbody tr:hover td {

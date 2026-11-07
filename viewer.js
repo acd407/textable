@@ -70,7 +70,12 @@ var TT = (globalThis.TT = globalThis.TT || {});
       headerDetected: false,
       fields: 0,
       data: [],
-      filter: '',
+      query: '',
+      /* find：全部行留在 DOM 里，高亮匹配并跳到当前那条；filter：只留匹配行 */
+      mode: 'find',
+      matches: [],
+      matchRows: null,
+      current: -1,
       filtered: null,
       raw: false
     };
@@ -113,9 +118,13 @@ var TT = (globalThis.TT = globalThis.TT || {});
     var searchWrap = h('label', 'tt-search');
     var searchBox = document.createElement('input');
     searchBox.type = 'search';
-    searchBox.placeholder = '过滤行…（Ctrl+F）';
     searchBox.spellcheck = false;
     searchWrap.appendChild(searchBox);
+
+    var modeBtn = h('button', 'tt-btn tt-btn-ghost', '过滤');
+    modeBtn.type = 'button';
+    modeBtn.title = '切换：查找（高亮并跳转）/ 过滤（只显示匹配行）';
+    var countEl = h('span', 'tt-count');
 
     var rawBtn = h('button', 'tt-btn', '原始文本');
     rawBtn.type = 'button';
@@ -125,6 +134,8 @@ var TT = (globalThis.TT = globalThis.TT || {});
     tools.appendChild(delimWrap);
     tools.appendChild(headerWrap);
     tools.appendChild(searchWrap);
+    tools.appendChild(countEl);
+    tools.appendChild(modeBtn);
     tools.appendChild(rawBtn);
     tools.appendChild(copyBtn);
 
@@ -189,11 +200,13 @@ var TT = (globalThis.TT = globalThis.TT || {});
       state.headerRow = TT.resolveHeader(headerMode, state.headerDetected);
       refreshData();
       state.filtered = null;
+      state.matches = [];
+      state.matchRows = null;
+      state.current = -1;
       scroll.scrollTop = 0;
       buildHead();
       buildCols();
-      updateMeta();
-      paint();
+      applySearch(false);
     }
 
     /* --------------------------------------------------------- 表头/列宽 */
@@ -285,10 +298,22 @@ var TT = (globalThis.TT = globalThis.TT || {});
       parts.push(TT.delimiterLabel(state.delimiter) + (state.delimiterAuto ? '（自动）' : ''));
       if (state.doc.truncated) parts.push('已截断到 ' + TT.formatInt(settings.maxRows) + ' 行');
       if (state.doc.warnings.length) parts.push(state.doc.warnings.join('；'));
-      if (state.filtered) {
+      if (state.mode === 'filter' && state.filtered) {
         parts.push('匹配 ' + TT.formatInt(state.filtered.length) + ' / ' + TT.formatInt(rows) + ' 行');
       }
       metaEl.textContent = parts.join(' · ');
+
+      if (state.mode !== 'find' || !state.query.trim()) {
+        countEl.textContent = '';
+        countEl.className = 'tt-count';
+      } else if (!state.matches.length) {
+        countEl.textContent = '无匹配';
+        countEl.className = 'tt-count tt-count-none';
+      } else {
+        countEl.textContent =
+          TT.formatInt(state.current + 1) + ' / ' + TT.formatInt(state.matches.length);
+        countEl.className = 'tt-count';
+      }
     }
 
     /* -------------------------------------------------------------- 绘制 */
@@ -320,9 +345,18 @@ var TT = (globalThis.TT = globalThis.TT || {});
     function buildRow(row, dataIndex) {
       var tr = h('tr', dataIndex % 2 === 1 ? 'tt-odd' : '');
       tr.appendChild(h('td', 'tt-gutter', String(rowLineNumber(dataIndex))));
+      var hitCols = state.matchRows ? state.matchRows.get(dataIndex) : null;
+      var currentMatch = state.current >= 0 ? state.matches[state.current] : null;
       for (var f = 0; f < state.fields; f++) {
         var value = row && row[f] != null ? row[f] : '';
-        tr.appendChild(cell(value, TT.isNumericCell(value), value.length > 24));
+        var td = cell(value, TT.isNumericCell(value), value.length > 24);
+        if (hitCols && hitCols.has(f)) {
+          var isCurrent = currentMatch && currentMatch.row === dataIndex && currentMatch.col === f;
+          td.className += isCurrent ? ' tt-hit tt-hit-current' : ' tt-hit';
+        }
+        td.dataset.row = String(dataIndex);
+        td.dataset.col = String(f);
+        tr.appendChild(td);
       }
       return tr;
     }
@@ -363,28 +397,84 @@ var TT = (globalThis.TT = globalThis.TT || {});
 
     /* ------------------------------------------------------------ 交互 */
 
-    var filterTimer = 0;
-    function applyFilter() {
-      var query = state.filter.trim().toLowerCase();
+    var searchTimer = 0;
+
+    /* 在查找模式下滚动到第 index 条匹配：先算 scrollTop 让行进入窗口，再横向对齐到那一列 */
+    function scrollToMatch(index) {
+      var match = state.matches[index];
+      if (!match) return;
+      var headH = state.headerRow ? ROW_H : 0;
+      var top = match.row * ROW_H + headH;
+      var view = scroll.clientHeight || 400;
+      if (top < scroll.scrollTop + headH || top + ROW_H > scroll.scrollTop + view) {
+        scroll.scrollTop = Math.max(0, top - Math.floor(view / 3));
+      }
+      paint();
+      var cell = tbody.querySelector(
+        'td[data-row="' + match.row + '"][data-col="' + match.col + '"]'
+      );
+      if (cell) cell.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    }
+
+    /**
+     * 查找（默认）或过滤。
+     *   find   —— 所有行留在 DOM 里，匹配的单元格高亮，「当前」那条高亮更明显并滚进视野；
+     *             Enter / Shift+Enter / F3 在匹配之间跳，语义和浏览器查找一致。
+     *   filter —— 只保留匹配行（原来的行为），适合想缩小范围看的时候。
+     */
+    function applySearch(jump) {
+      var query = state.query.trim().toLowerCase();
+      var rows = dataRows();
+
       if (!query) {
+        state.matches = [];
+        state.matchRows = null;
+        state.current = -1;
         state.filtered = null;
       } else {
-        var rows = dataRows();
-        var hits = [];
+        var matches = [];
+        var byRow = new Map();
+        var rowHits = [];
         for (var i = 0; i < rows.length; i++) {
           var row = rows[i];
+          var cols = null;
           for (var j = 0; j < row.length; j++) {
             if (row[j] && row[j].toLowerCase().indexOf(query) !== -1) {
-              hits.push(i);
-              break;
+              (cols || (cols = [])).push(j);
             }
           }
+          if (!cols) continue;
+          byRow.set(i, new Set(cols));
+          rowHits.push(i);
+          for (var k = 0; k < cols.length; k++) matches.push({ row: i, col: cols[k] });
         }
-        state.filtered = hits;
+        state.matches = matches;
+        state.matchRows = byRow;
+        state.filtered = state.mode === 'filter' ? rowHits : null;
+        state.current = state.mode === 'find' && matches.length ? 0 : -1;
+        if (state.mode === 'filter') scroll.scrollTop = 0;
       }
-      scroll.scrollTop = 0;
+
       updateMeta();
       paint();
+      if (jump && state.mode === 'find' && state.current >= 0) scrollToMatch(state.current);
+    }
+
+    function stepMatch(delta) {
+      if (state.mode !== 'find' || !state.matches.length) return;
+      state.current = (state.current + delta + state.matches.length) % state.matches.length;
+      updateMeta();
+      scrollToMatch(state.current);
+    }
+
+    function syncModeUi() {
+      var find = state.mode === 'find';
+      modeBtn.textContent = find ? '仅显示匹配' : '高亮查找';
+      modeBtn.title = find
+        ? '切换成过滤：只显示匹配行'
+        : '切换成查找：保留所有行，高亮匹配并跳转';
+      modeBtn.setAttribute('aria-pressed', find ? 'false' : 'true');
+      searchBox.placeholder = find ? '查找…（Ctrl+F，Enter 下一个）' : '过滤行…（Esc 清空）';
     }
 
     function showToast(message) {
@@ -433,18 +523,34 @@ var TT = (globalThis.TT = globalThis.TT || {});
     });
 
     searchBox.addEventListener('input', function () {
-      state.filter = searchBox.value;
-      clearTimeout(filterTimer);
-      filterTimer = setTimeout(applyFilter, 120);
+      state.query = searchBox.value;
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(function () {
+        applySearch(true);
+      }, 120);
     });
 
     searchBox.addEventListener('keydown', function (event) {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        stepMatch(event.shiftKey ? -1 : 1);
+        return;
+      }
       if (event.key === 'Escape') {
+        event.preventDefault();
         searchBox.value = '';
-        state.filter = '';
-        applyFilter();
+        state.query = '';
+        clearTimeout(searchTimer);
+        applySearch(false);
         searchBox.blur();
       }
+    });
+
+    modeBtn.addEventListener('click', function () {
+      state.mode = state.mode === 'find' ? 'filter' : 'find';
+      syncModeUi();
+      applySearch(true);
+      searchBox.focus();
     });
 
     rawBtn.addEventListener('click', function () {
@@ -488,6 +594,13 @@ var TT = (globalThis.TT = globalThis.TT || {});
     }
 
     function onKeyDown(event) {
+      /* F3 / Ctrl+G：下一个匹配（和浏览器的查找下一个同一套肌肉记忆） */
+      if (event.key === 'F3' || ((event.ctrlKey || event.metaKey) && !event.altKey && event.key === 'g')) {
+        event.preventDefault();
+        event.stopPropagation();
+        stepMatch(event.shiftKey ? -1 : 1);
+        return;
+      }
       if (!(event.ctrlKey || event.metaKey) || event.altKey || event.shiftKey) return;
       if (event.key !== 'f' && event.key !== 'F' && event.key !== 'Find') return;
       event.preventDefault();
@@ -520,6 +633,8 @@ var TT = (globalThis.TT = globalThis.TT || {});
     reparse(initial.delimiter);
     headerBox.checked = state.headerRow;
     delimSelect.value = state.delimiterAuto ? '__auto__' : state.delimiter;
+    syncModeUi();
+    if (state.query) applySearch(true);
     if (opts.raw) setRaw(true);
 
     return {
@@ -533,7 +648,7 @@ var TT = (globalThis.TT = globalThis.TT || {});
         document.removeEventListener('keydown', onKeyDown, true);
         if (resizeObserver) resizeObserver.disconnect();
         if (frame) cancelAnimationFrame(frame);
-        clearTimeout(filterTimer);
+        clearTimeout(searchTimer);
         root.remove();
       }
     };

@@ -177,6 +177,11 @@ const PROBE = `
       [...tr.children].map(td => td.textContent)) : [],
     spacerRows: table ? table.querySelectorAll('tbody tr.tt-spacer').length : 0,
     headerChecked: (document.querySelector('.tt-check input') || {}).checked,
+    count: (document.querySelector('.tt-count') || {}).textContent || '',
+    modeBtn: (document.querySelector('.tt-btn[aria-pressed]') || {}).textContent || '',
+    hits: table ? table.querySelectorAll('tbody td.tt-hit').length : 0,
+    hitCols: table ? table.querySelectorAll('tbody td.tt-hit-current').length : 0,
+    hitText: (table && table.querySelector('tbody td.tt-hit-current') || {}).textContent || '',
     rawVisible: !!document.querySelector('.tt-raw') && !document.querySelector('.tt-raw').hidden,
     rawText: document.querySelector('.tt-raw') ? document.querySelector('.tt-raw').textContent : '',
     preVisible: pre ? getComputedStyle(pre).visibility !== 'hidden' : null,
@@ -348,8 +353,24 @@ try {
   `);
   await sleep(400);
   state = await settle(client);
-  includes('过滤命中数', state.meta, '匹配 1 / 3 行');
-  ok('过滤后只剩一行', state.bodyRows.length === 1, state.bodyRows.length);
+  ok('查找：命中数显示在搜索框旁', state.count === '1 / 1', state.count);
+  ok('查找：不隐藏其他行', state.bodyRows.length === 3, state.bodyRows.length);
+  ok('查找：命中单元格被高亮', state.hits === 1 && state.hitCols === 1, {
+    hits: state.hits,
+    current: state.hitCols
+  });
+  ok('查找：当前命中就是那一格', state.hitText === 'Berlin', state.hitText);
+
+  /* 切到过滤模式：只留匹配行 */
+  await client.js('[...document.querySelectorAll(".tt-btn")].find(b => b.textContent === "仅显示匹配").click(); return true');
+  await sleep(300);
+  state = await settle(client);
+  ok('切到过滤：只剩匹配行', state.bodyRows.length === 1, state.bodyRows.length);
+  includes('切到过滤：元信息带命中数', state.meta, '匹配 1 / 3 行');
+  await client.js('[...document.querySelectorAll(".tt-btn")].find(b => b.textContent === "高亮查找").click(); return true');
+  await sleep(300);
+  state = await settle(client);
+  ok('切回查找：所有行回来了', state.bodyRows.length === 3, state.bodyRows.length);
 
   await client.js(`
     const input = document.querySelector('.tt-search input');
@@ -359,7 +380,8 @@ try {
   `);
   await sleep(400);
   state = await settle(client);
-  includes('清空过滤后恢复', state.meta, '3 行 × 4 列');
+  includes('清空查找后恢复', state.meta, '3 行 × 4 列');
+  ok('清空查找后不再高亮', state.hits === 0, state.hits);
 
   await client.js('[...document.querySelectorAll(".tt-btn")].find(b => b.textContent === "原始文本").click(); return true');
   state = await settle(client);
@@ -441,8 +463,39 @@ try {
     return { prevented: ev.defaultPrevented, input: active ? active.tagName + ':' + (active.className || active.type) : null };
   `);
   ok('Ctrl+F 被表格接管（不打开浏览器查找栏）', find.prevented === true, find);
-  ok('Ctrl+F 聚焦到表格的过滤框', String(find.input).startsWith('INPUT'), find);
+  ok('Ctrl+F 聚焦到表格的查找框', String(find.input).startsWith('INPUT'), find);
 
+  await client.js(`
+    const input = document.querySelector('.tt-search input');
+    input.value = 'user 299';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    return true;
+  `);
+  await sleep(500);
+  state = await settle(client);
+  ok('Ctrl+F 之后直接输入即开始查找', state.count === '1 / 11', state.count);
+  ok('查找不改变行数', state.bodyRows.length === 3000, state.bodyRows.length);
+  ok('查找给所有命中打高亮', state.hits > 1, state.hits);
+
+  await client.js(`
+    const input = document.querySelector('.tt-search input');
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
+    return true;
+  `);
+  await sleep(300);
+  state = await settle(client);
+  ok('Enter 跳到下一个命中', state.count === '2 / 11', state.count);
+
+  await client.js(`
+    const input = document.querySelector('.tt-search input');
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', shiftKey: true, bubbles: true, cancelable: true }));
+    return true;
+  `);
+  await sleep(300);
+  state = await settle(client);
+  ok('Shift+Enter 回到上一个命中', state.count === '1 / 11', state.count);
+
+  /* 远处的命中要滚进视野：搜最后一行 */
   await client.js(`
     const input = document.querySelector('.tt-search input');
     input.value = 'user 2999';
@@ -451,7 +504,11 @@ try {
   `);
   await sleep(500);
   state = await settle(client);
-  includes('Ctrl+F 之后直接输入即可过滤', state.meta, '匹配 1 / 3,000 行');
+  ok('远处的命中会滚进视野', state.scrollTop > 1000 && state.hitCols === 1, {
+    scrollTop: state.scrollTop,
+    current: state.hitCols
+  });
+  ok('滚到位的命中就是最后一行', state.hitText === 'user 2999', state.hitText);
 
   state = await visit(client, base + '/gen?rows=50000');
   ok('超过阈值仍然虚拟滚动', state.bodyRows.length < 200, state.bodyRows.length);
