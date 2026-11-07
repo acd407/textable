@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Textable",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "把浏览器里打开的 CSV / TSV / 制表符纯文本渲染成可筛选、可虚拟滚动的表格。",
   "homepage_url": "https://github.com/acd407/textable",
   "icons": {
